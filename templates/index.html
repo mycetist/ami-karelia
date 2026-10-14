@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Гид по Карелии</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/htmx.org@1.6.1/dist/htmx.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
+    <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <main class="max-w-4xl mx-auto p-6 space-y-4">
+        <h1 class="text-3xl font-bold">Гид по Карелии</h1>
+
+        <div id="map" class="h-[500px] w-full rounded-xl shadow"></div>
+
+        <button hx-get="/fetch-data" hx-target="#content"
+                class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+            Fetch Data
+        </button>
+        <div id="content"></div>
+    </main>
+
+    <script>
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://tiles.openfreemap.org/styles/liberty',
+            center: [8.68, 50.11],
+            zoom: 13
+        });
+        map.on('click', (e) => new maplibregl.Marker().setLngLat(e.lngLat).addTo(map));
+    </script>
+</body>
+</html>
