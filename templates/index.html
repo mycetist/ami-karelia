@@ -34,7 +34,7 @@
   <header class="px-6 pt-6 pb-4 flex flex-wrap justify-between items-end gap-2">
     <div>
       <h1 class="text-3xl font-bold tracking-tight">Осударева дорога</h1>
-      <p class="text-muted">Петровская Карелия: 10 остановок от Белого моря до Онежского озера</p>
+      <p class="text-muted">Петровская Карелия от Белого моря до Онежского озера</p>
     </div>
     <p class="text-muted">Отмечено <b id="count" class="text-ink">{{ visited|length }}</b> из {{ points|length }}</p>
   </header>
@@ -46,7 +46,9 @@
       {% for p in points %}
       <article id="place-{{ p.id }}" class="p-6 border-b border-line">
         <div class="aspect-[2/1] rounded-md overflow-hidden bg-line/50">
-          <img src="/static/img/{{ p.id }}.jpg" alt="{{ p.name }}" class="w-full h-full object-cover" onerror="this.remove()">
+          {% if p.image %}
+          <img src="/static/{{ p.image }}" alt="{{ p.name }}" class="w-full h-full object-cover">
+          {% endif %}
         </div>
         <h2 class="mt-4 text-xl font-bold"><span class="text-pine">{{ loop.index }}.</span> {{ p.name }}</h2>
         <p class="text-sm text-muted">{{ p.place }}</p>

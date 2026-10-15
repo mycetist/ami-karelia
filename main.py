@@ -15,6 +15,7 @@ POINTS_BY_ID = {p["id"]: p for p in POINTS}
 COOKIE = "visited"
 
 app = FastAPI()
+app.mount("/static/img", StaticFiles(directory=BASE / "img"), name="img")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
 
