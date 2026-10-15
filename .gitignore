@@ -1,2 +1,5 @@
 __pycache__
-img
+.ipynb_checkpoints
+.DS_Store
+/img/
+/models/

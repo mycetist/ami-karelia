@@ -66,7 +66,7 @@
       <button class="dot relative {% if p.id in visited %}lit{% endif %}" data-id="{{ p.id }}" title="{{ p.name }}">{{ loop.index }}</button>
       {% endfor %}
     </div>
-    <button hx-post="/reset" class="text-xs text-muted underline">сбросить</button>
+    <button hx-post="/reset" hx-on::before-request="clearPhotos()" class="text-xs text-muted underline">сбросить</button>
   </footer>
 
   <script>
@@ -104,8 +104,54 @@
     document.querySelectorAll('footer .dot').forEach(btn =>
       btn.onclick = () => show(POINTS.find(p => p.id === btn.dataset.id)));
 
+    const pending = {};
+
+    function showPhoto(id, url) {
+      document.querySelector(`#place-${id} img`).src = url;
+    }
+
+    function clearPhotos() {
+      try { POINTS.forEach(p => localStorage.removeItem('photo:' + p.id)); } catch {}
+    }
+
+    POINTS.forEach(p => {
+      try {
+        const url = localStorage.getItem('photo:' + p.id);
+        if (url) showPhoto(p.id, url);
+      } catch {}
+    });
+
+    async function shrink(file, max = 800) {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await img.decode();
+      URL.revokeObjectURL(img.src);
+      const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/jpeg', 0.8);
+    }
+
+    async function preparePhoto(input) {
+      const id = input.dataset.id;
+      try {
+        const url = await shrink(input.files[0]);
+        const dt = new DataTransfer();
+        dt.items.add(new File([await (await fetch(url)).blob()], 'photo.jpg', { type: 'image/jpeg' }));
+        input.files = dt.files;
+        pending[id] = url;
+      } catch {}
+      htmx.trigger(input.form, 'photo-ready');
+    }
+
     document.body.addEventListener('visited', e => {
       const id = e.detail.id;
+      if (pending[id]) {
+        try { localStorage.setItem('photo:' + id, pending[id]); } catch {}
+        showPhoto(id, pending[id]);
+      }
       visited.add(id);
       pins[id].classList.add('lit');
       document.querySelector(`footer .dot[data-id="${id}"]`).classList.add('lit');

@@ -2,10 +2,10 @@
   {% if done %}
     <p class="font-medium text-ochre">Отмечено</p>
   {% else %}
-    <form hx-post="/points/{{ point.id }}/check" hx-encoding="multipart/form-data" hx-trigger="change"
+    <form hx-post="/points/{{ point.id }}/check" hx-encoding="multipart/form-data" hx-trigger="photo-ready"
           hx-target="#mark-{{ point.id }}" hx-swap="outerHTML">
       <label class="inline-block px-4 py-2 rounded-md bg-pine hover:bg-ink text-paper font-medium cursor-pointer transition-colors">
-        <input type="file" name="photo" accept="image/*" hidden>
+        <input type="file" name="photo" accept="image/*" hidden data-id="{{ point.id }}" onchange="preparePhoto(this)">
         Отметить по фото
       </label>
       <span class="htmx-indicator ml-3 text-muted">Сверяем фото…</span>

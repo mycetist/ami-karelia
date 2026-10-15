@@ -1,0 +1,11 @@
+services:
+  web:
+    build: .
+    container_name: osudareva
+    restart: unless-stopped
+    networks: [proxy]
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-npm_default}
