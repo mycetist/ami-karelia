@@ -1,33 +1,114 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Гид по Карелии</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://unpkg.com/htmx.org@1.6.1/dist/htmx.min.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
-    <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Осударева дорога</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
+  <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+  <style type="text/tailwindcss">
+    @theme static {
+      --color-ground: #D8DAD4;
+      --color-paper: #ECEDE8;
+      --color-line: #BFC3BA;
+      --color-ink: #273029;
+      --color-muted: #6C736C;
+      --color-pine: #4c8c60;
+      --color-ochre: #eca542;
+    }
+    body { font-family: Manrope, sans-serif; }
+    #map canvas { filter: saturate(.55); }
+    .dot {
+      width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+      font-size: 12px; font-weight: 700; cursor: pointer; transition: all .4s;
+      background: var(--color-paper); color: var(--color-muted); border: 2px solid var(--color-muted);
+    }
+    .dot.lit { background: var(--color-ochre); border-color: var(--color-ochre); color: white; z-index: 1;
+               box-shadow: 0 0 0 4px rgb(191 138 63 / .25); }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-800">
-    <main class="max-w-4xl mx-auto p-6 space-y-4">
-        <h1 class="text-3xl font-bold">Гид по Карелии</h1>
+<body class="bg-ground text-ink flex flex-col lg:h-screen lg:overflow-hidden">
+  <header class="px-6 pt-6 pb-4 flex flex-wrap justify-between items-end gap-2">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">Осударева дорога</h1>
+      <p class="text-muted">Петровская Карелия: 10 остановок от Белого моря до Онежского озера</p>
+    </div>
+    <p class="text-muted">Отмечено <b id="count" class="text-ink">{{ visited|length }}</b> из {{ points|length }}</p>
+  </header>
 
-        <div id="map" class="h-[500px] w-full rounded-xl shadow"></div>
+  <main class="flex-1 min-h-0 px-6 pb-4 grid gap-4 lg:grid-cols-2 lg:grid-rows-1">
+    <div id="map" class="rounded-lg h-[50vh] lg:h-full"></div>
 
-        <button hx-get="/fetch-data" hx-target="#content"
-                class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
-            Fetch Data
-        </button>
-        <div id="content"></div>
-    </main>
+    <div class="rounded-lg bg-paper overflow-y-auto">
+      {% for p in points %}
+      <article id="place-{{ p.id }}" class="p-6 border-b border-line">
+        <div class="aspect-[2/1] rounded-md overflow-hidden bg-line/50">
+          <img src="/static/img/{{ p.id }}.jpg" alt="{{ p.name }}" class="w-full h-full object-cover" onerror="this.remove()">
+        </div>
+        <h2 class="mt-4 text-xl font-bold"><span class="text-pine">{{ loop.index }}.</span> {{ p.name }}</h2>
+        <p class="text-sm text-muted">{{ p.place }}</p>
+        <p class="mt-3 leading-relaxed">{{ p.text }}</p>
+        <div class="mt-4">{% with point=p, done=p.id in visited %}{% include "_mark.html" %}{% endwith %}</div>
+      </article>
+      {% endfor %}
+    </div>
+  </main>
 
-    <script>
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: 'https://tiles.openfreemap.org/styles/liberty',
-            center: [8.68, 50.11],
-            zoom: 13
-        });
-        map.on('click', (e) => new maplibregl.Marker().setLngLat(e.lngLat).addTo(map));
-    </script>
+  <footer class="sticky bottom-0 bg-paper border-t border-line px-6 py-3 flex items-center gap-6">
+    <div class="relative flex-1 flex items-center justify-between">
+      <div class="absolute inset-x-0 h-0.5 bg-line"></div>
+      {% for p in points %}
+      <button class="dot relative {% if p.id in visited %}lit{% endif %}" data-id="{{ p.id }}" title="{{ p.name }}">{{ loop.index }}</button>
+      {% endfor %}
+    </div>
+    <button hx-post="/reset" class="text-xs text-muted underline">сбросить</button>
+  </footer>
+
+  <script>
+    const POINTS = {{ points|tojson }};
+    const visited = new Set({{ visited|list|tojson }});
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      bounds: POINTS.reduce((b, p) => b.extend([p.lon, p.lat]), new maplibregl.LngLatBounds()),
+      fitBoundsOptions: { padding: 50 },
+    });
+
+    map.on('load', () => {
+      map.addSource('route', { type: 'geojson', data: { type: 'Feature',
+        geometry: { type: 'LineString', coordinates: POINTS.map(p => [p.lon, p.lat]) } } });
+      map.addLayer({ id: 'route', type: 'line', source: 'route',
+        paint: { 'line-color': '#46634F', 'line-width': 2, 'line-dasharray': [2, 1.5] } });
+    });
+
+    const pins = {};
+    POINTS.forEach((p, i) => {
+      const el = document.createElement('button');
+      el.className = 'dot' + (visited.has(p.id) ? ' lit' : '');
+      el.textContent = i + 1;
+      el.onclick = () => show(p);
+      new maplibregl.Marker({ element: el }).setLngLat([p.lon, p.lat]).addTo(map);
+      pins[p.id] = el;
+    });
+
+    function show(p) {
+      document.getElementById('place-' + p.id).scrollIntoView({ behavior: 'smooth' });
+      map.flyTo({ center: [p.lon, p.lat], zoom: 12 });
+    }
+    document.querySelectorAll('footer .dot').forEach(btn =>
+      btn.onclick = () => show(POINTS.find(p => p.id === btn.dataset.id)));
+
+    document.body.addEventListener('visited', e => {
+      const id = e.detail.id;
+      visited.add(id);
+      pins[id].classList.add('lit');
+      document.querySelector(`footer .dot[data-id="${id}"]`).classList.add('lit');
+      document.getElementById('count').textContent = visited.size;
+    });
+  </script>
 </body>
 </html>
