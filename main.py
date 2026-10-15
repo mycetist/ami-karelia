@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
@@ -11,6 +12,23 @@ from matcher import match
 BASE = Path(__file__).parent
 POINTS = json.loads((BASE / "data" / "points.json").read_text(encoding="utf-8"))
 POINTS_BY_ID = {p["id"]: p for p in POINTS}
+
+
+def load_guide(path: Path) -> dict[str, dict]:
+    guide = {}
+    for chunk in path.read_text(encoding="utf-8").split("<!-- id: ")[1:]:
+        pid, body = chunk.split(" -->", 1)
+        text, _, sources = body.partition("### Источники")
+        title, *paragraphs = [b.strip() for b in text.strip().split("\n\n")]
+        guide[pid] = {
+            "title": title.removeprefix("## "),
+            "paragraphs": paragraphs,
+            "sources": re.findall(r"^- \[(.+)\]\((.+)\)$", sources, re.M),
+        }
+    return guide
+
+
+GUIDE = load_guide(BASE / "data" / "guide.md")
 
 COOKIE = "visited"
 
@@ -27,7 +45,7 @@ def read_visited(request: Request) -> set[str]:
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(
-        request, "index.html", {"points": POINTS, "visited": read_visited(request)}
+        request, "index.html", {"points": POINTS, "guide": GUIDE, "visited": read_visited(request)}
     )
 
 

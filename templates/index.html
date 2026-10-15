@@ -21,6 +21,9 @@
     }
     body { font-family: Manrope, sans-serif; }
     #map canvas { filter: saturate(.55); }
+    body:has(dialog[open]) { overflow: hidden; }
+    dialog[open] { animation: pop .2s ease-out; }
+    @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
     .dot {
       width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
       font-size: 12px; font-weight: 700; cursor: pointer; transition: all .4s;
@@ -53,8 +56,39 @@
         <h2 class="mt-4 text-xl font-bold"><span class="text-pine">{{ loop.index }}.</span> {{ p.name }}</h2>
         <p class="text-sm text-muted">{{ p.place }}</p>
         <p class="mt-3 leading-relaxed">{{ p.text }}</p>
+        {% if guide[p.id] %}
+        <button onclick="document.getElementById('guide-{{ p.id }}').showModal()"
+                class="mt-2 font-medium text-pine hover:text-ink transition-colors">Подробнее →</button>
+        {% endif %}
         <div class="mt-4">{% with point=p, done=p.id in visited %}{% include "_mark.html" %}{% endwith %}</div>
       </article>
+      {% set g = guide[p.id] %}
+      {% if g %}
+      <dialog id="guide-{{ p.id }}" onclick="if (event.target === this) this.close()"
+              class="m-auto w-[min(42rem,calc(100%-2rem))] max-h-[85vh] rounded-lg bg-paper text-ink shadow-2xl open:flex flex-col backdrop:bg-ink/50 backdrop:backdrop-blur-sm">
+        <header class="flex items-start justify-between gap-4 px-6 sm:px-8 pt-6 pb-4 border-b border-line">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight leading-tight">{{ g.title }}</h2>
+            <p class="mt-1 text-sm text-muted">{{ p.place }}</p>
+          </div>
+          <button onclick="this.closest('dialog').close()" aria-label="Закрыть"
+                  class="shrink-0 size-9 grid place-items-center rounded-full text-2xl leading-none text-muted hover:bg-line/60 hover:text-ink transition-colors">&times;</button>
+        </header>
+        <div class="overflow-y-auto px-6 sm:px-8 py-6">
+          <div class="space-y-4 leading-relaxed">
+            {% for para in g.paragraphs %}<p>{{ para }}</p>{% endfor %}
+          </div>
+          {% if g.sources %}
+          <h3 class="mt-8 text-xs font-bold uppercase tracking-wider text-muted">Источники</h3>
+          <ul class="mt-2 space-y-1.5 text-sm">
+            {% for name, url in g.sources %}
+            <li><a href="{{ url }}" target="_blank" rel="noopener" class="text-pine hover:text-ink underline decoration-line underline-offset-2">{{ name }}</a></li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+      </dialog>
+      {% endif %}
       {% endfor %}
     </div>
   </main>
